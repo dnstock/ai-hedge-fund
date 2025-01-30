@@ -22,6 +22,7 @@ from dashboard.components.performance import render_performance_metrics
 from dashboard.utils.workflow import run_hedge_fund
 from utils.analysts import ANALYST_ORDER
 from dashboard.components.progress import render_progress, progress
+from dashboard.components.risk_metrics import render_risk_metrics
 
 def main():
     st.set_page_config(page_title="AI Hedge Fund Dashboard", layout="wide")
@@ -98,7 +99,7 @@ def main():
 
     # Main dashboard layout
     if st.session_state.result is not None:
-        tabs = st.tabs(["Portfolio", "Analysis", "Performance"])
+        tabs = st.tabs(["Portfolio", "Analysis", "Performance", "Risk"])
 
         with tabs[0]:
             render_portfolio_view(st.session_state.portfolio, st.session_state.tickers)
@@ -112,6 +113,9 @@ def main():
 
         with tabs[2]:
             render_performance_metrics(st.session_state.result)
+
+        with tabs[3]:
+            render_risk_metrics(st.session_state.result, st.session_state.portfolio)
     else:
         st.info("👈 Configure your settings and click 'Run Analysis' to start")
 
