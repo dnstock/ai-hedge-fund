@@ -12,7 +12,7 @@ load_dotenv()
 
 # Add PYTHONPATH from .env to sys.path
 python_path = os.getenv("PYTHONPATH")
-if python_path and python_path not in sys.path:
+if (python_path and python_path not in sys.path):
     sys.path.insert(0, python_path)
 
 from dashboard.components.portfolio import render_portfolio_view
@@ -21,7 +21,7 @@ from dashboard.components.trading_decisions import render_trading_decisions
 from dashboard.components.performance import render_performance_metrics
 from dashboard.utils.workflow import run_hedge_fund
 from utils.analysts import ANALYST_ORDER
-from dashboard.components.progress import render_progress
+from dashboard.components.progress import render_progress, progress
 
 def main():
     st.set_page_config(page_title="AI Hedge Fund Dashboard", layout="wide")
@@ -61,7 +61,7 @@ def main():
         initial_cash = st.number_input("Initial Cash", value=100000.0, step=10000.0)
 
         # Run analysis button
-        if st.button("Run Analysis"):
+        if st.sidebar.button("Run Analysis"):
             # Calculate start date based on lookback period
             period_map = {
                 "1 Week": timedelta(days=7),
@@ -87,14 +87,14 @@ def main():
                     selected_analysts=selected_analysts
                 )
 
-                # Store results in session state
+                # Store results and update progress display
                 st.session_state.result = result
                 st.session_state.portfolio = portfolio
                 st.session_state.tickers = tickers
+                progress.set_trading_output(result)
 
-    # Add progress display above the main content
-    if st.session_state.get('progress_active', False):
-        render_progress()
+    # Add progress display at the top of the dashboard
+    render_progress()
 
     # Main dashboard layout
     if st.session_state.result is not None:
