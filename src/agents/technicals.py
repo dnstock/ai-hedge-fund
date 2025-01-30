@@ -136,42 +136,51 @@ def technical_analyst_agent(state: AgentState):
 
 
 def calculate_trend_signals(prices_df):
-    """
-    Advanced trend following strategy using multiple timeframes and indicators
-    """
-    # Calculate EMAs for multiple timeframes
-    ema_8 = calculate_ema(prices_df, 8)
-    ema_21 = calculate_ema(prices_df, 21)
-    ema_55 = calculate_ema(prices_df, 55)
+    """Advanced trend following strategy using multiple timeframes and indicators"""
+    try:
+        # Calculate EMAs for multiple timeframes
+        ema_8 = calculate_ema(prices_df, 8)
+        ema_21 = calculate_ema(prices_df, 21)
+        ema_55 = calculate_ema(prices_df, 55)
 
-    # Calculate ADX for trend strength
-    adx = calculate_adx(prices_df, 14)
+        # Calculate ADX for trend strength
+        adx = calculate_adx(prices_df, 14)
 
-    # Determine trend direction and strength
-    short_trend = ema_8 > ema_21
-    medium_trend = ema_21 > ema_55
+        # Determine trend direction and strength
+        short_trend = ema_8 > ema_21
+        medium_trend = ema_21 > ema_55
 
-    # Combine signals with confidence weighting
-    trend_strength = adx["adx"].iloc[-1] / 100.0
+        # Combine signals with confidence weighting
+        trend_strength = float(adx["adx"].iloc[-1]) / 100.0 if not pd.isna(adx["adx"].iloc[-1]) else 0.5
 
-    if short_trend.iloc[-1] and medium_trend.iloc[-1]:
-        signal = "bullish"
-        confidence = trend_strength
-    elif not short_trend.iloc[-1] and not medium_trend.iloc[-1]:
-        signal = "bearish"
-        confidence = trend_strength
-    else:
-        signal = "neutral"
-        confidence = 0.5
+        if short_trend.iloc[-1] and medium_trend.iloc[-1]:
+            signal = "bullish"
+            confidence = trend_strength
+        elif not short_trend.iloc[-1] and not medium_trend.iloc[-1]:
+            signal = "bearish"
+            confidence = trend_strength
+        else:
+            signal = "neutral"
+            confidence = 0.5
 
-    return {
-        "signal": signal,
-        "confidence": confidence,
-        "metrics": {
-            "adx": float(adx["adx"].iloc[-1]),
-            "trend_strength": float(trend_strength),
-        },
-    }
+        return {
+            "signal": signal,
+            "confidence": float(confidence),  # Ensure confidence is a float
+            "metrics": {
+                "adx": float(adx["adx"].iloc[-1]) if not pd.isna(adx["adx"].iloc[-1]) else 0.0,
+                "trend_strength": float(trend_strength),
+            },
+        }
+    except Exception as e:
+        print(f"Error in trend signals calculation: {str(e)}")
+        return {
+            "signal": "neutral",
+            "confidence": 0.5,
+            "metrics": {
+                "adx": 0.0,
+                "trend_strength": 0.5,
+            },
+        }
 
 
 def calculate_mean_reversion_signals(prices_df):
