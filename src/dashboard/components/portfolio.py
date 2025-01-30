@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
-from tools.api import get_prices, prices_to_df
+from tools.api import get_prices, get_market_cap, prices_to_df
 
 def render_portfolio_view(portfolio, tickers):
     st.subheader("Portfolio Overview")
@@ -25,13 +25,15 @@ def render_portfolio_view(portfolio, tickers):
             current_price = prices_to_df(prices)["close"].iloc[-1]
             position_value = portfolio["positions"][ticker] * current_price
             total_value += position_value
+            market_cap = get_market_cap(ticker, end_date)
 
             portfolio_data.append({
                 "Ticker": ticker,
                 "Shares": portfolio["positions"][ticker],
                 "Current Price": f"${current_price:.2f}",
                 "Position Value": f"${position_value:.2f}",
-                "Weight": f"{(position_value/total_value*100):.1f}%"
+                "Weight": f"{(position_value/total_value*100):.1f}%",
+                "Market Cap": f"${market_cap:,.0f}" if market_cap else "N/A",
             })
 
     # Add cash position
