@@ -118,9 +118,12 @@ def render_performance_metrics(result):
 
     with col2:
         # Display metrics
-        metrics = calculate_metrics(history)
-        for metric, value in metrics.items():
-            st.metric(metric, value)
+        if 'portfolio_history' in result:
+            history = pd.DataFrame(result['portfolio_history'])
+
+            metrics = calculate_metrics(history)
+            for metric, value in metrics.items():
+                st.metric(metric, value)
 
     # Trading History
     if 'trades' in result:
