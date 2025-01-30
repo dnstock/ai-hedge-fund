@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
@@ -6,12 +7,20 @@ from tools.api import get_prices, prices_to_df
 def render_portfolio_view(portfolio, tickers):
     st.subheader("Portfolio Overview")
 
+    # Get today's date for price lookup
+    end_date = datetime.now().strftime("%Y-%m-%d")
+    start_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+
     # Create portfolio summary table
     portfolio_data = []
     total_value = portfolio["cash"]
 
     for ticker in tickers:
-        prices = get_prices(ticker=ticker, limit=1)
+        prices = get_prices(
+            ticker=ticker,
+            start_date=start_date,
+            end_date=end_date
+        )
         if prices:
             current_price = prices_to_df(prices)["close"].iloc[-1]
             position_value = portfolio["positions"][ticker] * current_price

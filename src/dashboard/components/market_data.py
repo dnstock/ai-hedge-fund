@@ -9,9 +9,17 @@ def render_market_data(tickers):
     # Market Overview
     cols = st.columns(len(tickers))
 
+    # Get today's date for price lookup
+    end_date = datetime.now().strftime("%Y-%m-%d")
+    start_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+
     for i, ticker in enumerate(tickers):
         with cols[i]:
-            prices = get_prices(ticker, limit=2)
+            prices = get_prices(
+                ticker=ticker,
+                start_date=start_date,
+                end_date=end_date
+            )
             if prices:
                 df = prices_to_df(prices)
                 current_price = df['close'].iloc[-1]
@@ -37,7 +45,13 @@ def render_market_data(tickers):
     days_map = {'1D': 1, '5D': 5, '1M': 30, '3M': 90, '6M': 180, '1Y': 365}
     days = days_map[timeframe]
 
-    prices = get_prices(selected_ticker, limit=days)
+    start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+
+    prices = get_prices(
+        selected_ticker,
+        start_date=start_date,
+        end_date=end_date
+    )
     if prices:
         df = prices_to_df(prices)
 

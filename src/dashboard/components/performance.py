@@ -30,10 +30,18 @@ def render_performance_metrics(result):
         # Get historical prices for performance chart
         col1, col2 = st.columns([2, 1])
 
+        # Get prices for last 30 days
+        end_date = pd.Timestamp.now().strftime("%Y-%m-%d")
+        start_date = (pd.Timestamp.now() - pd.DateOffset(days=30)).strftime("%Y-%m-%d")
+
         with col1:
             fig = go.Figure()
             for ticker in decisions.keys():
-                prices = get_prices(ticker=ticker, limit=30)
+                prices = get_prices(
+                    ticker=ticker,
+                    start_date=start_date,
+                    end_date=end_date
+                )
                 if prices:
                     df = prices_to_df(prices)
                     fig.add_trace(go.Scatter(
@@ -51,10 +59,17 @@ def render_performance_metrics(result):
             )
             st.plotly_chart(fig, use_container_width=True)
 
+        # Get prices of last 2 days for metrics
+        start_date = (pd.Timestamp.now() - pd.DateOffset(days=2)).strftime("%Y-%m-%d")
+
         with col2:
             # Display summary metrics
             for ticker in decisions.keys():
-                prices = get_prices(ticker=ticker, limit=2)
+                prices = get_prices(
+                    ticker=ticker,
+                    start_date=start_date,
+                    end_date=end_date
+                )
                 if prices:
                     df = prices_to_df(prices)
                     current_price = df["close"].iloc[-1]
