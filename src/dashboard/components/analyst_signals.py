@@ -31,4 +31,4 @@ def render_analyst_signals(result):
                 return 'background-color: #FFB6C1'
             return ''
 
-        st.dataframe(df.style.applymap(color_signals, subset=['Signal']))
+        st.dataframe(df.style.map(color_signals, subset=['Signal']))

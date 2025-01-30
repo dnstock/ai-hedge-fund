@@ -25,7 +25,7 @@ def render_trading_decisions(result):
             return 'background-color: #FFB6C1'
         return ''
 
-    st.dataframe(df.style.applymap(color_actions, subset=['Action']))
+    st.dataframe(df.style.map(color_actions, subset=['Action']))
 
     # Display detailed reasoning if available
     if st.checkbox("Show Decision Reasoning"):
