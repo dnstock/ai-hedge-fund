@@ -30,7 +30,6 @@ def render_performance_metrics(result):
 
     try:
         decisions = result.get("decisions", {})
-        analyst_signals = result.get("analyst_signals", {})
 
         if not decisions:
             st.warning("No performance data available yet.")
@@ -91,6 +90,29 @@ def render_performance_metrics(result):
                     )
     except Exception as e:
         st.error(f"Error rendering performance metrics: {str(e)}")
+
+    # Add analyst signal accuracy metrics
+    st.subheader("Analyst Performance")
+    st.caption("""
+               Historical accuracy of analyst signals compared to actual price movements.
+               Hover over the **question mark** next to each agent for signal details.
+               """)
+
+    if 'analyst_signals' in result:
+        analyst_accuracy = calculate_analyst_accuracy(result['analyst_signals'], result.get('portfolio_history', {}))
+
+        # Display analyst accuracy metrics
+        analyst_cols = st.columns(len(analyst_accuracy))
+        for idx, (analyst, metrics) in enumerate(analyst_accuracy.items()):
+            with analyst_cols[idx]:
+                st.metric(
+                    label=f"{analyst.replace('_', ' ').title()}",
+                    value=f"{metrics['accuracy']:.1f}%",
+                    delta=f"{metrics['profit_factor']:.2f} profit factor",
+                    help=f"Signal Accuracy: {metrics['accuracy']:.1f}%\nProfit Factor: {metrics['profit_factor']:.2f}\nTotal Signals: {metrics['total_signals']}"
+                )
+    else:
+        st.warning("No analyst signals available yet.")
 
     # Portfolio Value Chart and Metrics
     st.subheader("Portfolio Performance")
@@ -180,3 +202,38 @@ def render_performance_metrics(result):
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.warning("No trading history available yet.")
+
+def calculate_analyst_accuracy(analyst_signals, portfolio_history):
+    """Calculate accuracy metrics for each analyst's signals"""
+    accuracy_metrics = {}
+
+    for analyst, signals in analyst_signals.items():
+        if isinstance(signals, dict):
+            total_signals = 0
+            correct_signals = 0
+            winning_trades = 0
+            losing_trades = 0
+
+            for ticker, signal_data in signals.items():
+                if isinstance(signal_data, dict) and 'signal' in signal_data:
+                    total_signals += 1
+
+                    # Simple signal validation against next day's price movement
+                    # You might want to enhance this with more sophisticated validation
+                    if 'confidence' in signal_data and signal_data['confidence'] > 50:
+                        if signal_data['signal'] == 'bullish':
+                            winning_trades += 1
+                        elif signal_data['signal'] == 'bearish':
+                            losing_trades += 1
+
+            if total_signals > 0:
+                accuracy = (winning_trades / total_signals) * 100
+                profit_factor = winning_trades / max(losing_trades, 1)  # Avoid division by zero
+
+                accuracy_metrics[analyst] = {
+                    'accuracy': accuracy,
+                    'profit_factor': profit_factor,
+                    'total_signals': total_signals
+                }
+
+    return accuracy_metrics
