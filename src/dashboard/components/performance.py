@@ -3,6 +3,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
 from tools.api import get_prices, prices_to_df
+from dashboard.utils.help_text import PERFORMANCE_HELP
 
 def calculate_metrics(portfolio_history):
     """Calculate key portfolio metrics"""
@@ -18,6 +19,14 @@ def calculate_metrics(portfolio_history):
 
 def render_performance_metrics(result):
     st.subheader("Performance Metrics")
+
+    # Add help button in the header
+    with st.expander("Understanding Performance Metrics", icon=":material/modeling:"):
+        st.write("""
+        These metrics show how your portfolio has performed over time.
+
+        Hover over the **question mark** next to each metric for detailed explanations.
+        """)
 
     try:
         decisions = result.get("decisions", {})
@@ -83,11 +92,18 @@ def render_performance_metrics(result):
     except Exception as e:
         st.error(f"Error rendering performance metrics: {str(e)}")
 
-    col1, col2 = st.columns([3, 1])
+    # Portfolio Value Chart and Metrics
+    st.subheader("Portfolio Performance")
+    st.caption("""
+    This section shows the historical performance of your portfolio over time.
+    Hover over the **question mark** next to each metric for detailed explanations.
+    """)
 
-    with col1:
-        # Portfolio Value Chart
-        if 'portfolio_history' in result:
+    if('portfolio_history' in result):
+        col1, col2 = st.columns([3, 1])
+
+        with col1:
+            # Portfolio Value Chart
             fig = go.Figure()
             history = pd.DataFrame(result['portfolio_history'])
 
@@ -116,18 +132,41 @@ def render_performance_metrics(result):
             )
             st.plotly_chart(fig, use_container_width=True)
 
-    with col2:
-        # Display metrics
-        if 'portfolio_history' in result:
+        with col2:
+            # Display metrics
             history = pd.DataFrame(result['portfolio_history'])
 
             metrics = calculate_metrics(history)
-            for metric, value in metrics.items():
-                st.metric(metric, value)
+            st.metric(
+                label=f"Total Return",
+                value=metrics['Total Return'],
+                help=PERFORMANCE_HELP["total_return"]
+            )
+
+            st.metric(
+                label=f"Win Rate",
+                value=metrics['Win Rate'],
+                help=PERFORMANCE_HELP["win_rate"]
+            )
+
+            st.metric(
+                label=f"Max Drawdown",
+                value=metrics['Max Drawdown'],
+                help=PERFORMANCE_HELP["max_drawdown"]
+                )
+    else:
+        st.warning("No portfolio history available yet.")
+
+    # Add explanation for equity curve
+    st.subheader("Equity Curve")
+    st.caption(PERFORMANCE_HELP["equity_curve"])
 
     # Trading History
+    st.subheader("Trading History")
+    st.caption("""
+    This chart shows all trading activity in your portfolio. The size of each point represents the trade size, and the color indicates whether it was a buy or sell.
+    """)
     if 'trades' in result:
-        st.subheader("Trading History")
         trades_df = pd.DataFrame(result['trades'])
 
         fig = px.scatter(trades_df,
@@ -139,3 +178,5 @@ def render_performance_metrics(result):
                         title='Trading Activity')
 
         st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.warning("No trading history available yet.")
