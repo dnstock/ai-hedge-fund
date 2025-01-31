@@ -17,6 +17,14 @@ def render_trading_decisions(result):
             "HOLD": "255,165,0"       # Orange
         }.get(action, "128,128,128")  # Gray
 
+        # Handle special case where action is "hold" due to error
+        help_text = None
+        if (action == "HOLD" and
+            decision.get('confidence', 0) == 0.0 and
+            "Error" in decision.get('reasoning', '')):
+            help_text = "This is a fallback decision due to an error. Check error details for more information."
+            # st.warning(help_text, icon=":material/info:")
+
         # Main decision display
         st.markdown(f"""
         <div style='
@@ -32,19 +40,11 @@ def render_trading_decisions(result):
             <b>Confidence:</b> {decision.get('confidence', 0):.1f}%<br>
             <b>Reasoning:</b> {decision.get('reasoning', 'No reasoning provided')}
         </div>
-        """, unsafe_allow_html=True)
-
-        # Handle special case where action is "hold" due to error
-        if (action == "HOLD" and
-            decision.get('confidence', 0) == 0.0 and
-            "Error" in decision.get('reasoning', '')):
-            st.warning(
-                icon=":material/info:",
-                body="This is a fallback decision due to an error. Check error details for more information."
-            )
+        """, unsafe_allow_html=True, help=help_text)
 
         # Error details display
         if decision.get('error_details'):
             with st.expander("Error Details", expanded=False):
                 st.error("An error occurred during decision making", icon=":material/warning:")
                 st.code(decision['error_details'], language="text", wrap_lines=True)
+            st.divider()
