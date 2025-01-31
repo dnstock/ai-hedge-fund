@@ -23,6 +23,7 @@ from dashboard.utils.workflow import run_hedge_fund
 from utils.analysts import ANALYST_ORDER
 from dashboard.components.progress import render_progress, progress
 from dashboard.components.risk_metrics import render_risk_metrics
+from dashboard.components.api_settings import render_api_settings
 
 def main():
     st.set_page_config(page_title="AI Hedge Fund Dashboard", layout="wide")
@@ -35,8 +36,17 @@ def main():
     if 'portfolio' not in st.session_state:
         st.session_state.portfolio = None
 
+    # Initialize API keys from environment if not in session state
+    if 'OPENAI_API_KEY' not in st.session_state:
+        st.session_state.OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
+    if 'FINANCIAL_DATASETS_API_KEY' not in st.session_state:
+        st.session_state.FINANCIAL_DATASETS_API_KEY = os.getenv('FINANCIAL_DATASETS_API_KEY', '')
+
     # Sidebar settings
     with st.sidebar:
+        # Add API settings at the top of sidebar
+        render_api_settings()
+
         st.title("Settings")
 
         # Ticker selection
@@ -117,7 +127,7 @@ def main():
         with tabs[3]:
             render_risk_metrics(st.session_state.result, st.session_state.portfolio)
     else:
-        st.info("👈 Configure your settings and click 'Run Analysis' to start")
+        st.info("Configure your settings and click 'Run Analysis' to start", icon=":material/west:")  # 👈
 
 if __name__ == "__main__":
     main()
