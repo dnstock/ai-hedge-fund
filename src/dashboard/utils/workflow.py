@@ -57,46 +57,38 @@ def start(state: AgentState):
     """Initialize the workflow with the input message."""
     return state
 
-def run_hedge_fund(tickers, start_date, end_date, portfolio, show_reasoning=False, selected_analysts=None):
+def run_hedge_fund(tickers, start_date, end_date, portfolio, show_reasoning=False,
+                  selected_analysts=None, model_name="gpt-4-turbo-preview", model_provider="openai"):
     """Run the hedge fund analysis."""
-    # Start progress tracking
     progress.start()
 
     try:
-        # Create a new workflow if analysts are customized
-        if selected_analysts is not None:
-            workflow = create_workflow(selected_analysts)
-            agent = workflow.compile()
-        else:
-            workflow = create_workflow()
-            agent = workflow.compile()
+        workflow = create_workflow(selected_analysts) if selected_analysts else create_workflow()
+        agent = workflow.compile()
 
-        final_state = agent.invoke(
-            {
-                "messages": [
-                    HumanMessage(
-                        content="Make trading decisions based on the provided data.",
-                    )
-                ],
-                "data": {
-                    "tickers": tickers,
-                    "portfolio": portfolio,
-                    "start_date": start_date,
-                    "end_date": end_date,
-                    "analyst_signals": {},
-                },
-                "metadata": {
-                    "show_reasoning": show_reasoning,
-                },
+        final_state = agent.invoke({
+            "messages": [HumanMessage(content="Make trading decisions based on the provided data.")],
+            "data": {
+                "tickers": tickers,
+                "portfolio": portfolio,
+                "start_date": start_date,
+                "end_date": end_date,
+                "analyst_signals": {},
             },
-        )
+            "metadata": {
+                "show_reasoning": show_reasoning,
+                "model_name": model_name,
+                "model_provider": model_provider,
+                "temperature": 0.7,
+                "max_tokens": 1500,
+            },
+        })
 
         return {
             "decisions": parse_hedge_fund_response(final_state["messages"][-1].content),
             "analyst_signals": final_state["data"]["analyst_signals"],
         }
     finally:
-        # Stop progress tracking
         progress.stop()
 
 def parse_hedge_fund_response(response):

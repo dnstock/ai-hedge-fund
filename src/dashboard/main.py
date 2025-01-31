@@ -24,6 +24,7 @@ from utils.analysts import ANALYST_ORDER
 from dashboard.components.progress import render_progress, progress
 from dashboard.components.risk_metrics import render_risk_metrics
 from dashboard.components.api_settings import render_api_settings
+from llm.models import LLM_ORDER, get_model_info
 
 def main():
     st.set_page_config(page_title="AI Hedge Fund Dashboard", layout="wide")
@@ -48,6 +49,22 @@ def main():
         render_api_settings()
 
         st.title("Settings")
+
+        # Add model selection at the top
+        st.subheader("Model Settings")
+        model_options = [(display, value) for display, value, _ in LLM_ORDER]
+        selected_model = st.selectbox(
+            "Select LLM Model",
+            options=[value for _, value in model_options],
+            format_func=lambda x: next(display for display, value in model_options if value == x),
+            help="Choose the language model to use for analysis"
+        )
+
+        # Get model info and provider
+        model_info = get_model_info(selected_model)
+        model_provider = model_info.provider.value if model_info else "openai"
+
+        st.subheader("Trading Settings")
 
         # Ticker selection
         ticker_input = st.text_input("Enter Tickers (comma-separated)", "AAPL,MSFT,GOOGL")
@@ -95,7 +112,9 @@ def main():
                     start_date=start_date.strftime("%Y-%m-%d"),
                     end_date=end_date.strftime("%Y-%m-%d"),
                     portfolio=portfolio,
-                    selected_analysts=selected_analysts
+                    selected_analysts=selected_analysts,
+                    model_name=selected_model,
+                    model_provider=model_provider
                 )
 
                 # Store results and update progress display
