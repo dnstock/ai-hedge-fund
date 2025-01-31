@@ -21,10 +21,45 @@ from dashboard.components.trading_decisions import render_trading_decisions
 from dashboard.components.performance import render_performance_metrics
 from dashboard.utils.workflow import run_hedge_fund
 from utils.analysts import ANALYST_ORDER
-from dashboard.components.progress import render_progress, progress
+from utils.progress import progress, render_progress_display  # Update import
 from dashboard.components.risk_metrics import render_risk_metrics
 from dashboard.components.api_settings import render_api_settings
 from llm.models import LLM_ORDER, get_model_info
+
+def render_dashboard_progress():
+    """Render progress tracking in the dashboard"""
+    if "progress_container" not in st.session_state:
+        st.session_state.progress_container = st.empty()
+
+    # Process any new messages
+    messages = progress.get_messages()
+    state = progress.get_current_state()
+
+    if state["running"] or state["trading_output"]:
+        with st.session_state.progress_container.container():
+            col1, col2 = st.columns([1, 1])
+
+            with col1:
+                if state["running"]:
+                    st.markdown("### Analysis Progress")
+
+                    # Create status table data
+                    status_data = []
+                    for agent, update in state["updates"].items():
+                        status_data.append({
+                            "Agent": agent.replace("_agent", "").replace("_", " ").title(),
+                            "Ticker": update.get("ticker", ""),
+                            "Status": update.get("status", ""),
+                            "Time": update.get("timestamp", "")
+                        })
+
+                    if status_data:
+                        st.table(pd.DataFrame(status_data))
+
+            with col2:
+                if state["trading_output"]:
+                    st.markdown("### Trading Decisions")
+                    # ... rest of existing trading output display code ...
 
 def main():
     st.set_page_config(page_title="AI Hedge Fund Dashboard", layout="wide")
@@ -124,7 +159,10 @@ def main():
                 progress.set_trading_output(result)
 
     # Add progress display at the top of the dashboard
-    render_progress()
+    state = progress.get_current_state()
+    render_progress_display(state)
+
+    render_dashboard_progress()
 
     # Main dashboard layout
     if st.session_state.result is not None:
