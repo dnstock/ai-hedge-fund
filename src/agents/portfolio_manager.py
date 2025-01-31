@@ -14,6 +14,7 @@ class PortfolioDecision(BaseModel):
     quantity: int = Field(description="Number of shares to trade")
     confidence: float = Field(description="Confidence in the decision, between 0.0 and 100.0")
     reasoning: str = Field(description="Reasoning for the decision")
+    error_details: str | None = Field(default=None, description="Detailed error information if something went wrong")
 
 
 class PortfolioManagerOutput(BaseModel):
@@ -112,14 +113,14 @@ def generate_trading_decision(
                 - For sells: quantity must be ≤ current position shares
                 - For buys: quantity must be ≤ max_shares provided for each ticker
                 - The max_shares values are pre-calculated to respect position limits
-                
+
                 Inputs:
                 - signals_by_ticker: dictionary of ticker to signals from analysts
                 - max_shares: maximum number of shares allowed for each ticker
                 - portfolio_cash: current cash in portfolio
                 - portfolio_positions: current positions in portfolio
                 - current_prices: current price for each ticker
-                
+
                 Output (must be in JSON format):
                 - action: "buy", "sell", or "hold"
                 - quantity: number of shares to trade (integer)
@@ -187,15 +188,16 @@ def generate_trading_decision(
         }
     )
 
-    # Create default factory for PortfolioManagerOutput
-    def create_default_portfolio_output():
+    def create_default_portfolio_output(tickers, error_info=None):
+        """Create default portfolio output with optional error information"""
         return PortfolioManagerOutput(
             decisions={
                 ticker: PortfolioDecision(
                     action="hold",
                     quantity=0,
                     confidence=0.0,
-                    reasoning="Error in portfolio management, defaulting to hold"
+                    reasoning="Error in portfolio management, defaulting to hold",
+                    error_details=error_info if error_info else "Unknown error occurred"
                 ) for ticker in tickers
             }
         )
@@ -206,5 +208,5 @@ def generate_trading_decision(
         model_provider=model_provider,
         pydantic_model=PortfolioManagerOutput,
         agent_name="portfolio_management_agent",
-        default_factory=create_default_portfolio_output
+        default_factory=lambda error_info=None: create_default_portfolio_output(tickers, error_info)
     )

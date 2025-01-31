@@ -4,6 +4,7 @@ import json
 from typing import TypeVar, Type, Optional, Any
 from pydantic import BaseModel
 from utils.progress import progress
+import traceback
 
 T = TypeVar('T', bound=BaseModel)
 
@@ -18,7 +19,7 @@ def call_llm(
 ) -> T:
     """
     Makes an LLM call with retry logic, handling both Deepseek and non-Deepseek models.
-    
+
     Args:
         prompt: The prompt to send to the LLM
         model_name: Name of the model to use
@@ -27,28 +28,29 @@ def call_llm(
         agent_name: Optional name of the agent for progress updates
         max_retries: Maximum number of retries (default: 3)
         default_factory: Optional factory function to create default response on failure
-        
+
     Returns:
         An instance of the specified Pydantic model
     """
     from llm.models import get_model, get_model_info
-    
+
     model_info = get_model_info(model_name)
     llm = get_model(model_name, model_provider)
-    
+
     # For non-Deepseek models, we can use structured output
     if not (model_info and model_info.is_deepseek()):
         llm = llm.with_structured_output(
             pydantic_model,
             method="json_mode",
         )
-    
+
     # Call the LLM with retries
+    last_error = None
     for attempt in range(max_retries):
         try:
             # Call the LLM
             result = llm.invoke(prompt)
-            
+
             # For Deepseek, we need to extract and parse the JSON manually
             if model_info and model_info.is_deepseek():
                 parsed_result = extract_json_from_deepseek_response(result.content)
@@ -56,26 +58,43 @@ def call_llm(
                     return pydantic_model(**parsed_result)
             else:
                 return result
-                
+
         except Exception as e:
+            last_error = e
             if agent_name:
                 progress.update_status(agent_name, None, f"Error - retry {attempt + 1}/{max_retries}")
-            
+
             if attempt == max_retries - 1:
-                print(f"Error in LLM call after {max_retries} attempts: {e}")
-                # Use default_factory if provided, otherwise create a basic default
+                error_msg = (
+                    f"Error in LLM call after {max_retries} attempts:\n"
+                    f"Model: {model_name} ({model_provider})\n"
+                    f"Error: {str(e)}"
+                )
+                # For debugging, print the error and traceback in the console
+                print(error_msg + "\n" + traceback.format_exc())
                 if default_factory:
-                    return default_factory()
-                return create_default_response(pydantic_model)
+                    try:
+                        # Try to create with error info
+                        if hasattr(default_factory, '__code__') and 'error_info' in default_factory.__code__.co_varnames:
+                            return default_factory(error_info=error_msg)
+                        # Fall back to old behavior
+                        return default_factory()
+                    except:
+                        # If all else fails, create a basic error response
+                        return create_default_response(pydantic_model, error_msg)
+                raise
 
-    # This should never be reached due to the retry logic above
-    return create_default_response(pydantic_model)
+    # Should never reach here, but just in case
+    error_msg = f"Max retries exceeded. Last error: {str(last_error)}"
+    return create_default_response(pydantic_model, error_msg)
 
-def create_default_response(model_class: Type[T]) -> T:
-    """Creates a safe default response based on the model's fields."""
+def create_default_response(model_class: Type[T], error_info: Optional[str] = None) -> T:
+    """Creates a safe default response with optional error information."""
     default_values = {}
     for field_name, field in model_class.model_fields.items():
-        if field.annotation == str:
+        if field_name == "error_details" and error_info:
+            default_values[field_name] = error_info
+        elif field.annotation == str:
             default_values[field_name] = "Error in analysis, using default"
         elif field.annotation == float:
             default_values[field_name] = 0.0
@@ -89,7 +108,7 @@ def create_default_response(model_class: Type[T]) -> T:
                 default_values[field_name] = field.annotation.__args__[0]
             else:
                 default_values[field_name] = None
-    
+
     return model_class(**default_values)
 
 def extract_json_from_deepseek_response(content: str) -> Optional[dict]:
